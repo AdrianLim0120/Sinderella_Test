@@ -2,8 +2,18 @@
 // /config/wa_config.php
 // Keep this file OUT of your public repo. Rotate your token if it was ever public.
 // Daily send window (MYT). Job runs only inside this window unless &force=1.
-const WINDOW_START_MIN  = 2*60;  // 02:00
-const WINDOW_END_MIN    = 2*60+10;  // 02:10
+const WINDOW_START = '02:33';
+const WINDOW_END   = '02:38';
+
+// convert "HH:MM" -> minutes since midnight
+function hm_to_min(string $hhmm): int {
+  if (!preg_match('/^(\d{1,2}):([0-5]\d)$/', $hhmm, $m)) return 0;
+  return ((int)$m[1]) * 60 + (int)$m[2];
+}
+
+// expose helpers for run.php
+function window_start_min(): int { return hm_to_min(WINDOW_START); }
+function window_end_min(): int   { return hm_to_min(WINDOW_END); }
 
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
