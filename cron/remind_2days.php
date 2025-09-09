@@ -37,13 +37,28 @@ if (PHP_SAPI !== 'cli') {
     }
 }
 
-// ===== Time gate to 08:00–08:10 (unless force=1) =====
+// ===== Time gate to the configured window (unless force=1) =====
 if (!$force) {
-    $hhmm = (int) $now->format('Hi'); // e.g., 0804
-    if ($hhmm < 2320 || $hhmm > 2330) {
-        echo json_encode(['ok' => true, 'skipped' => 'outside_8am_window', 'server_time' => $now->format('c')]);
-        exit;
-    }
+  $hhmm = (int)$now->format('Hi'); // e.g., 2324
+
+  $inWindow = false;
+  if (DAILY_WINDOW_START <= DAILY_WINDOW_END) {
+    // normal window, e.g., 2320–2330
+    $inWindow = ($hhmm >= DAILY_WINDOW_START && $hhmm <= DAILY_WINDOW_END);
+  } else {
+    // cross-midnight window support, e.g., 2358–0005
+    $inWindow = ($hhmm >= DAILY_WINDOW_START || $hhmm <= DAILY_WINDOW_END);
+  }
+
+  if (!$inWindow) {
+    echo json_encode([
+      'ok' => true,
+      'skipped' => 'outside_window',
+      'server_time' => $now->format('c'),
+      'window' => ['start' => DAILY_WINDOW_START, 'end' => DAILY_WINDOW_END]
+    ]);
+    exit;
+  }
 }
 
 @mkdir(__DIR__ . '/../logs', 0775, true);

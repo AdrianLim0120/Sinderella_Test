@@ -1,6 +1,9 @@
 <?php
 // /config/wa_config.php
 // Keep this file OUT of your public repo. Rotate your token if it was ever public.
+// Daily send window (MYT). Job runs only inside this window unless &force=1.
+const DAILY_WINDOW_START = 2340;  // 23:20
+const DAILY_WINDOW_END   = 2345;  // 23:30
 
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
