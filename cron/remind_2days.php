@@ -1,9 +1,13 @@
 <?php
 // /cron/remind_2days.php
 // Finds bookings with service_date = today+2 and sends the approved template to admin, customer, and Sinderella.
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // keep output clean (use &debug=1 to see details)
 
 require_once __DIR__ . '/../db_connect.php';
 require_once __DIR__ . '/../config/wa_config.php';
+
+header('Content-Type: application/json');
 
 function fmt_date($ymd)
 {
@@ -21,14 +25,14 @@ function time_range($from, $to)
 $tz = new DateTimeZone('Asia/Kuala_Lumpur');
 $now = new DateTime('now', $tz);
 $force = (int) ($_GET['force'] ?? 0);
+$debug = (int) ($_GET['debug'] ?? 0);
 
 // Optional guard so people don't hit this directly in production without the internal key.
 if (PHP_SAPI !== 'cli') {
     $ik = $_GET['internal_key'] ?? '';
-    $force = isset($_GET['force']) ? (int) $_GET['force'] : 0;
     if ($ik !== INTERNAL_KEY && !$force) {
         http_response_code(403);
-        echo "forbidden";
+        echo json_encode(['ok' => false, 'error' => 'forbidden']);
         exit;
     }
 }
@@ -60,17 +64,15 @@ try {
         }
         exit;
     }
-} catch (\Throwable $e) {
-    // ignore read errors
+} catch (\Throwable $e) { /* ignore */
 }
 
+// ===== Target date (today + 2) or override with ?date=YYYY-MM-DD =====
 $targetDate = $_GET['date'] ?? (new DateTime('now', $tz))->modify('+2 days')->format('Y-m-d');
-
 
 // ---- QUERY YOUR DATA ----
 // Assumed schema based on your repo; adjust table/column names if needed.
 $sql = "
-SELECT 
 SELECT
       b.booking_id, b.booking_date, b.booking_from_time, b.booking_to_time, b.full_address,
       si.sind_name, si.sind_phno,
@@ -81,17 +83,18 @@ SELECT
     WHERE b.booking_status = 'confirm'
       AND b.booking_date   = ?
 ";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param('s', $targetDate);
-$stmt->execute();
-$res = $stmt->get_result();
-
-$sentCount = 0;
-$log = [];
+$debugInfo = ['target_date' => $targetDate, 'rows' => [], 'recipients' => []];
 
 try {
-    while ($row = $res->fetch_assoc()) {
+    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $targetDate);
+    $stmt->execute();
+    $res = $stmt->get_result();
 
+    $sentCount = 0;
+    $log = [];
+    while ($row = $res->fetch_assoc()) {
         $serviceDateText = fmt_date($row['booking_date']);
         $serviceTimeText = time_range($row['booking_from_time'], $row['booking_to_time']);
 
@@ -127,6 +130,19 @@ try {
         // de-duplicate
         $recipients = array_values(array_unique(array_filter($recipients)));
 
+        if ($debug) {
+            $debugInfo['rows'][] = [
+                'booking_id' => $row['booking_id'],
+                'sinderella' => $sindName,
+                'sinderella_msisdn' => $sindMsisdn,
+                'customer' => $custName,
+                'customer_msisdn' => $custMsisdn,
+                'address' => $addr,
+                'params' => $params
+            ];
+            $debugInfo['recipients'][] = $recipients;
+        }
+
         foreach ($recipients as $to) {
             $r = wa_send_template($to, WA_TEMPLATE_BOOKING, $params, WA_LANG_CODE);
             $sentCount++;
@@ -148,20 +164,23 @@ try {
         'sent' => $sentCount
     ]));
 
-    // Log file (optional)
     @file_put_contents(
         __DIR__ . '/../logs/wa_' . date('Ymd_Hi') . '.log',
         json_encode(['target_date' => $targetDate, 'sent' => $sentCount, 'rows' => $log], JSON_PRETTY_PRINT) . PHP_EOL,
         FILE_APPEND
     );
 
-    echo json_encode(['ok' => true, 'target_date' => $targetDate, 'messages_sent' => $sentCount]);
+    $out = ['ok' => true, 'target_date' => $targetDate, 'messages_sent' => $sentCount];
+    if ($debug)
+        $out['debug'] = $debugInfo;
+    echo json_encode($out);
 
 } catch (\Throwable $e) {
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    echo json_encode(['ok' => false, 'error' => $e->getMessage(), 'sql' => $sql]);
 } finally {
-    $stmt->close();
+    if (isset($stmt) && $stmt)
+        $stmt->close();
     if ($lockfp) {
         flock($lockfp, LOCK_UN);
         fclose($lockfp);
