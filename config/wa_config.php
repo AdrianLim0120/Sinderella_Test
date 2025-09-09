@@ -21,7 +21,7 @@ const INTERNAL_KEY         = 'sinderella-internal-456';      // change this
 
 // Admin recipients (E.164 without "+"): 60XXXXXXXXX
 const ADMIN_NUMBERS = [
-  '60122222222' // add more if you have multiple admins
+  '60169673981' // add more if you have multiple admins
 ];
 
 // --- helpers ---
