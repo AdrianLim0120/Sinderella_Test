@@ -75,7 +75,7 @@ if ($action === 'overview') {
         FROM bookings b
         $chkJoin
         WHERE b.booking_status <> 'cancel'
-          AND b.booking_date = '2025-08-25'   
+          AND b.booking_date = CURDATE()   
       ) AS t
     ";
 
