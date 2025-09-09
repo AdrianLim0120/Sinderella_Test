@@ -99,6 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" placeholder="" required>
+                <label><input type="checkbox" onclick="togglePassword('password')"> Show Password</label>
+                
                 <button type="submit">Sign In</button>
                 <p id="error-message"><?php if (isset($error_message)) echo $error_message; ?></p>
                 <p><a href="rc/forgot_pwd.php">Forgot Password?</a></p>
@@ -106,5 +108,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
         </div>
     </div>
+<script>
+    function togglePassword(fieldId) {
+        var field = document.getElementById(fieldId);
+        if (field.type === "password") {
+            field.type = "text";
+        } else {
+            field.type = "password";
+        }
+    }
+</script>
 </body>
 </html>

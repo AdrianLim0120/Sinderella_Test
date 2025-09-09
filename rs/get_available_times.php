@@ -1,9 +1,9 @@
 <?php
-session_start();
-if (!isset($_SESSION['sind_id'])) {
-    echo json_encode([]);
-    exit();
-}
+// session_start();
+// if (!isset($_SESSION['sind_id'])) {
+//     echo json_encode([]);
+//     exit();
+// }
 
 // Database connection
 require_once '../db_connect.php'; //
@@ -12,7 +12,12 @@ if ($conn->connect_error) {
     exit();
 }
 
-$sind_id = $_SESSION['sind_id'];
+// $sind_id = $_SESSION['sind_id'];
+$sind_id = isset($_GET['sind_id']) ? intval($_GET['sind_id']) : (isset($_SESSION['sind_id']) ? $_SESSION['sind_id'] : 0);
+if (!$sind_id) {
+    echo json_encode(['dateBased' => [], 'dayBased' => []]);
+    exit;
+}
 
 // Retrieve available times for the current and next month
 $currentMonth = date('Y-m-01');

@@ -126,6 +126,7 @@ $stmt->close();
             <div class="profile-container">
                 <h2>Manage Schedule</h2>
                 <p>Sinderella: <strong><?php echo htmlspecialchars($sind_name); ?></strong></p>
+                <div id="dayBasedTableContainer"></div><br>
                 <div id="calendarContainer"></div>
                 <div id="scheduleFormContainer" style="display: none;">
                     <h3 id="scheduleFormTitle"></h3>

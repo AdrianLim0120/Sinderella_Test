@@ -12,9 +12,6 @@ CREATE TABLE IF NOT EXISTS customers (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE customers
-ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
 -- INSERT INTO customers 
 -- (cust_name, cust_phno, cust_pwd, cust_status) VALUES
 -- ('Customer One', '0123456789', 'password', 'active');

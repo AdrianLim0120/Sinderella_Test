@@ -204,35 +204,53 @@ $html = "
             <hr>
         </div>";
 
-    $sql_ad = "SELECT
-                    SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN 1 ELSE 0 END) AS num_l1,
-                    SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN 1 ELSE 0 END) AS num_l2,
-                    p.lvl1 AS unit_price_l1,
-                    p.lvl2 AS unit_price_l2,
-                    SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN 1 ELSE 0 END) * p.lvl1 AS total_l1,
-                    SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN 1 ELSE 0 END) * p.lvl2 AS total_l2
-                FROM pricings p
-                LEFT JOIN bookings b ON b.booking_type = 'a'
-                    AND b.booking_status IN ('done','rated')
-                    AND b.booking_date BETWEEN ? AND ?
-                WHERE p.service_type = 'a'";
+        $sql_ad = "
+            SELECT
+                /* counts (each booking matched to its pricing row by service_id) */
+                SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN 1 ELSE 0 END) AS num_l1,
+                SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN 1 ELSE 0 END) AS num_l2,
 
-    $stmt1 = $conn->prepare($sql_ad);
-    $stmt1->bind_param('iiiiss', $target_sind_id, $target_sind_id, $target_sind_id, $target_sind_id, $startStr, $endStr);
-    $stmt1->execute();
-    $res = $stmt1->get_result();
+                /* unit prices (they can differ by service_id; we’ll show one representative) */
+                MAX(p.lvl1) AS unit_price_l1,
+                MAX(p.lvl2) AS unit_price_l2,
 
-    while ($ad = $res->fetch_assoc()) {
-        $ad_numl1 = number_format($ad['num_l1']);
-        $ad_numl2 = number_format($ad['num_l2']);
-        $ad_unit_price_l1 = number_format($ad['unit_price_l1'], 2);
-        $ad_unit_price_l2 = number_format($ad['unit_price_l2'], 2);
-        $ad_total_l1 = number_format($ad['total_l1'], 2);
-        $ad_total_l2 = number_format($ad['total_l2'], 2);
-    }
-    $stmt1->close();
+                /* totals = sum the price for exactly those bookings that belong to the level */
+                SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN COALESCE(p.lvl1,0) ELSE 0 END) AS total_l1,
+                SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN COALESCE(p.lvl2,0) ELSE 0 END) AS total_l2
+            FROM pricings p
+            /* KEY CHANGE: join by both service_type and service_id so each booking
+            matches exactly one pricing row */
+            LEFT JOIN bookings b
+            ON b.booking_type   = p.service_type
+            AND b.service_id     = p.service_id
+            AND b.booking_status IN ('done','rated')
+            AND b.booking_date BETWEEN ? AND ?
+            WHERE p.service_type = 'a'
+        ";
+        $stmt1 = $conn->prepare($sql_ad);
+        $stmt1->bind_param('iiiiss',
+            $target_sind_id, $target_sind_id,  // counts for L1 & L2
+            $target_sind_id, $target_sind_id,  // totals for L1 & L2
+            $startStr, $endStr                 // date range
+        );
+        $stmt1->execute();
+        $res = $stmt1->get_result();
 
-    $ad_subtotal = number_format($ad_total_l1 + $ad_total_l2, 2);
+        $ad_numl1 = $ad_numl2 = 0;
+        $ad_unit_price_l1 = $ad_unit_price_l2 = 0.0;
+        $ad_total_l1 = $ad_total_l2 = 0.0;
+
+        if ($ad = $res->fetch_assoc()) {
+            $ad_numl1        = number_format((int)$ad['num_l1']);
+            $ad_numl2        = number_format((int)$ad['num_l2']);
+            $ad_unit_price_l1= number_format((float)$ad['unit_price_l1'], 2);
+            $ad_unit_price_l2= number_format((float)$ad['unit_price_l2'], 2);
+            $ad_total_l1     = number_format((float)$ad['total_l1'], 2);
+            $ad_total_l2     = number_format((float)$ad['total_l2'], 2);
+        }
+        $stmt1->close();
+
+        $ad_subtotal = number_format((float)$ad_total_l1 + (float)$ad_total_l2, 2);
 
         $html .= "
         <div class='income'>
@@ -263,36 +281,47 @@ $html = "
                     <td></td>
                 </tr>";
 
-    $sql_rec = "SELECT
-                    SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN 1 ELSE 0 END) AS num_l1,
-                    SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN 1 ELSE 0 END) AS num_l2,
-                    p.lvl1 AS unit_price_l1,
-                    p.lvl2 AS unit_price_l2,
-                    SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN 1 ELSE 0 END) * p.lvl1 AS total_l1,
-                    SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN 1 ELSE 0 END) * p.lvl2 AS total_l2
-                FROM pricings p
-                LEFT JOIN bookings b ON b.booking_type = 'r'
-                    AND b.booking_status IN ('done','rated')
-                    AND b.booking_date BETWEEN ? AND ?
-                WHERE p.service_type = 'r'";
+        $sql_rec = "
+            SELECT
+                SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN 1 ELSE 0 END) AS num_l1,
+                SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN 1 ELSE 0 END) AS num_l2,
+                MAX(p.lvl1) AS unit_price_l1,
+                MAX(p.lvl2) AS unit_price_l2,
+                SUM(CASE WHEN b.bp_lvl1_sind_id = ? THEN COALESCE(p.lvl1,0) ELSE 0 END) AS total_l1,
+                SUM(CASE WHEN b.bp_lvl2_sind_id = ? THEN COALESCE(p.lvl2,0) ELSE 0 END) AS total_l2
+            FROM pricings p
+            LEFT JOIN bookings b
+            ON b.booking_type   = p.service_type
+            AND b.service_id     = p.service_id
+            AND b.booking_status IN ('done','rated')
+            AND b.booking_date BETWEEN ? AND ?
+            WHERE p.service_type = 'r'
+        ";
+        $stmt2 = $conn->prepare($sql_rec);
+        $stmt2->bind_param('iiiiss',
+            $target_sind_id, $target_sind_id,
+            $target_sind_id, $target_sind_id,
+            $startStr, $endStr
+        );
+        $stmt2->execute();
+        $res = $stmt2->get_result();
 
-    $stmt2 = $conn->prepare($sql_rec);
-    $stmt2->bind_param('iiiiss', $target_sind_id, $target_sind_id, $target_sind_id, $target_sind_id, $startStr, $endStr);
-    $stmt2->execute();
-    $res = $stmt2->get_result();
+        $rec_numl1 = $rec_numl2 = 0;
+        $rec_unit_price_l1 = $rec_unit_price_l2 = 0.0;
+        $rec_total_l1 = $rec_total_l2 = 0.0;
 
-    while ($rec = $res->fetch_assoc()) {
-        $rec_numl1 = number_format($rec['num_l1']);
-        $rec_numl2 = number_format($rec['num_l2']);
-        $rec_unit_price_l1 = number_format($rec['unit_price_l1'], 2);
-        $rec_unit_price_l2 = number_format($rec['unit_price_l2'], 2);
-        $rec_total_l1 = number_format($rec['total_l1'], 2);
-        $rec_total_l2 = number_format($rec['total_l2'], 2);
-    }
-    $stmt2->close();
+        if ($rec = $res->fetch_assoc()) {
+            $rec_numl1        = number_format((int)$rec['num_l1']);
+            $rec_numl2        = number_format((int)$rec['num_l2']);
+            $rec_unit_price_l1= number_format((float)$rec['unit_price_l1'], 2);
+            $rec_unit_price_l2= number_format((float)$rec['unit_price_l2'], 2);
+            $rec_total_l1     = number_format((float)$rec['total_l1'], 2);
+            $rec_total_l2     = number_format((float)$rec['total_l2'], 2);
+        }
+        $stmt2->close();
 
-    $rec_subtotal = number_format($rec_total_l1 + $rec_total_l2, 2);
-    $grand_total = $rec_subtotal + $ad_subtotal;
+        $rec_subtotal = number_format((float)$rec_total_l1 + (float)$rec_total_l2, 2);
+        $grand_total  = number_format((float)$ad_subtotal + (float)$rec_subtotal, 2);
 
         $html .= "
                 <tr>

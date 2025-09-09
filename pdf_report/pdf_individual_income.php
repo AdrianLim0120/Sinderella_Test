@@ -238,19 +238,24 @@ $html = "
             <hr>
         </div>";
 
-    $sql_adhoc_service = "SELECT
-                    COUNT(b.booking_id)            AS num,
-                    COALESCE(p.sinderella, 0)      AS unit_price,
-                    COUNT(b.booking_id) * COALESCE(p.sinderella, 0) AS total
-                FROM bookings b
-                LEFT JOIN pricings p ON b.booking_type = p.service_type
-                WHERE b.sind_id = ?
-                    AND b.booking_date >= ?
-                    AND b.booking_date <= ?
-                    AND b.booking_status IN ('done','rated')
-                    AND p.service_type = 'a'";
+    $sql_adhoc_service_4 = "
+        SELECT
+            COUNT(*) AS num,
+            COALESCE(p.sinderella, 0) AS unit_price,
+            COUNT(*) * COALESCE(p.sinderella, 0) AS total
+        FROM bookings b
+        JOIN pricings p
+        ON p.service_id = b.service_id
+        AND p.service_type = b.booking_type
+        WHERE b.sind_id = ?
+        AND b.booking_date >= ?
+        AND b.booking_date <= ?
+        AND b.booking_status IN ('done','rated')
+        AND b.booking_type = 'a'
+        AND b.service_id = 1
+    ";
 
-    $stmt1 = $conn->prepare($sql_adhoc_service);
+    $stmt1 = $conn->prepare($sql_adhoc_service_4);
     $stmt1->bind_param('iss', $target_sind_id, $start, $end);
     $stmt1->execute();
     $res = $stmt1->get_result();
@@ -259,6 +264,34 @@ $html = "
         $ad_num = number_format($ad['num']);
         $ad_unit_price = number_format($ad['unit_price'], 2);
         $ad_total = number_format($ad['total'], 2);
+    }
+    $stmt1->close();
+
+    $sql_adhoc_service_2 = "
+        SELECT
+            COUNT(*) AS num,
+            COALESCE(p.sinderella, 0) AS unit_price,
+            COUNT(*) * COALESCE(p.sinderella, 0) AS total
+        FROM bookings b
+        JOIN pricings p
+        ON p.service_id = b.service_id
+        AND p.service_type = b.booking_type
+        WHERE b.sind_id = ?
+        AND b.booking_date >= ?
+        AND b.booking_date <= ?
+        AND b.booking_status IN ('done','rated')
+        AND b.booking_type = 'a'
+        AND b.service_id = 2
+    ";
+    $stmt1 = $conn->prepare($sql_adhoc_service_2);
+    $stmt1->bind_param('iss', $target_sind_id, $start, $end);
+    $stmt1->execute();
+    $res = $stmt1->get_result();
+
+    while ($ad = $res->fetch_assoc()) {
+        $ad_num_2 = number_format($ad['num']);
+        $ad_unit_price_2 = number_format($ad['unit_price'], 2);
+        $ad_total_2 = number_format($ad['total'], 2);
     }
     $stmt1->close();
 
@@ -314,7 +347,7 @@ $html = "
     }
     $stmt5->close();
 
-    $adhoc_total = number_format($ad_total + $extra_ad_total + $cleaning_ad_total, 2);
+    $adhoc_total = number_format($ad_total + $extra_ad_total + $cleaning_ad_total + $ad_total_2, 2);
 
         $html .= "
         <div class='income'>
@@ -328,6 +361,13 @@ $html = "
                     <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>" . $ad_num . "</td>
                     <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $ad_unit_price . "</td>
                     <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $ad_total . "</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td style='border: 0px solid #000; border-bottom: 0; text-align: left;' width='30%'>2 Hours Service</td>
+                    <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>" . $ad_num_2 . "</td>
+                    <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $ad_unit_price_2 . "</td>
+                    <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $ad_total_2 . "</td>
                     <td></td>
                 </tr>
                 <tr>
@@ -352,19 +392,24 @@ $html = "
                     <td></td>
                 </tr>";
         
-    $sql_rec_service = "SELECT
-                    COUNT(b.booking_id)            AS num,
-                    COALESCE(p.sinderella, 0)      AS unit_price,
-                    COUNT(b.booking_id) * COALESCE(p.sinderella, 0) AS total
-                FROM bookings b
-                LEFT JOIN pricings p ON b.booking_type = p.service_type
-                WHERE b.sind_id = ?
-                    AND b.booking_date >= ?
-                    AND b.booking_date <= ?
-                    AND b.booking_status IN ('done','rated')
-                    AND p.service_type = 'r'";
+    $sql_rec_service_4 = "
+        SELECT
+            COUNT(*) AS num,
+            COALESCE(p.sinderella, 0) AS unit_price,
+            COUNT(*) * COALESCE(p.sinderella, 0) AS total
+        FROM bookings b
+        JOIN pricings p
+        ON p.service_id = b.service_id
+        AND p.service_type = b.booking_type
+        WHERE b.sind_id = ?
+        AND b.booking_date >= ?
+        AND b.booking_date <= ?
+        AND b.booking_status IN ('done','rated')
+        AND b.booking_type = 'r'
+        AND b.service_id = 1
+    ";
 
-    $stmt2 = $conn->prepare($sql_rec_service);
+    $stmt2 = $conn->prepare($sql_rec_service_4);
     $stmt2->bind_param('iss', $target_sind_id, $start, $end);
     $stmt2->execute();
     $res2 = $stmt2->get_result();
@@ -373,6 +418,35 @@ $html = "
         $rec_num = number_format($rec['num']);
         $rec_unit_price = number_format($rec['unit_price'], 2, '.', '');
         $rec_total = number_format($rec['total'], 2, '.', '');
+    }
+    $stmt2->close();
+
+    $sql_rec_service_2 = "
+        SELECT
+            COUNT(*) AS num,
+            COALESCE(p.sinderella, 0) AS unit_price,
+            COUNT(*) * COALESCE(p.sinderella, 0) AS total
+        FROM bookings b
+        JOIN pricings p
+        ON p.service_id = b.service_id
+        AND p.service_type = b.booking_type
+        WHERE b.sind_id = ?
+        AND b.booking_date >= ?
+        AND b.booking_date <= ?
+        AND b.booking_status IN ('done','rated')
+        AND b.booking_type = 'r'
+        AND b.service_id = 2
+    ";
+
+    $stmt2 = $conn->prepare($sql_rec_service_2);
+    $stmt2->bind_param('iss', $target_sind_id, $start, $end);
+    $stmt2->execute();
+    $res2 = $stmt2->get_result();
+
+    while ($rec = $res2->fetch_assoc()) {
+        $rec_num_2 = number_format($rec['num']);
+        $rec_unit_price_2 = number_format($rec['unit_price'], 2, '.', '');
+        $rec_total_2 = number_format($rec['total'], 2, '.', '');
     }
     $stmt2->close();
 
@@ -428,7 +502,7 @@ $html = "
     }
     $stmt6->close();
 
-    $recurring_total = number_format($rec_total + $extra_rec_total + $cleaning_rec_total, 2);
+    $recurring_total = number_format($rec_total + $extra_rec_total + $cleaning_rec_total + $rec_total_2, 2);
     $grand_total = number_format($recurring_total + $adhoc_total, 2);
 
         $html .= "
@@ -440,6 +514,13 @@ $html = "
                     <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>" . $rec_num . "</td>
                     <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $rec_unit_price . "</td>
                     <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $rec_total . "</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td style='border: 0px solid #000; border-bottom: 0; text-align: left;' width='30%'>2 Hours Service</td>
+                    <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>" . $rec_num_2 . "</td>
+                    <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $rec_unit_price_2 . "</td>
+                    <td style='border: 0px solid #000; border-left: 0; border-bottom: 0; text-align: left;' width='20%'>RM " . $rec_total_2 . "</td>
                     <td></td>
                 </tr>
                 <tr>

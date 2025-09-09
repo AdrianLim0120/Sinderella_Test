@@ -32,6 +32,7 @@
                 <input type="password" id="password" name="password" required>
                 <label for="confirm_password">Confirm Password:</label>
                 <input type="password" id="confirm_password" name="confirm_password" required>
+                <label><input type="checkbox" id="showPasswordAll" onclick="toggleAllPasswords()"> Show Password</label>
                 <button type="submit">Change Password</button>
                 <p id="error-message"></p>
             </form>

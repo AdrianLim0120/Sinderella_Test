@@ -107,11 +107,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_address = $_POST['new_full_address'];
         $new_sind_id = $_POST['new_sind_id'];
 
-        $stmt = $conn->prepare("UPDATE bookings SET booking_date=?, booking_from_time=?, booking_to_time=?, full_address=?, sind_id=? WHERE booking_id=?");
-        $stmt->bind_param("ssssii", $new_date, $new_from_time, $new_to_time, $new_address, $new_sind_id, $booking_id);
-        $stmt->execute();
-        $stmt->close();
-
+        if (strtolower($booking_status) === 'rejected') {
+            $stmt = $conn->prepare("UPDATE bookings SET booking_date=?, booking_from_time=?, booking_to_time=?, full_address=?, sind_id=?, booking_status='paid' WHERE booking_id=?");
+            $stmt->bind_param("ssssii", $new_date, $new_from_time, $new_to_time, $new_address, $new_sind_id, $booking_id);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            $stmt = $conn->prepare("UPDATE bookings SET booking_date=?, booking_from_time=?, booking_to_time=?, full_address=?, sind_id=? WHERE booking_id=?");
+            $stmt->bind_param("ssssii", $new_date, $new_from_time, $new_to_time, $new_address, $new_sind_id, $booking_id);
+            $stmt->execute();
+            $stmt->close();
+        }
         header("Location: view_booking_details.php?booking_id=$booking_id");
         exit();
     }
@@ -269,6 +275,133 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // ======== END PAYMENT RECEIVED HANDLER =================================
 
+    if (isset($_POST['mark_done'])) {
+        // 1. Mark booking as done
+        $stmt = $conn->prepare("UPDATE bookings SET booking_status='done' WHERE booking_id=?");
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+        $stmt->close();
+
+        // 2. Generate token for rating
+        $token = bin2hex(random_bytes(16));
+        $expires_at = date('Y-m-d H:i:s', time() + 86400); // 24 hours from now
+
+        // Remove old tokens for this booking
+        $conn->query("DELETE FROM booking_rating_links WHERE booking_id = $booking_id");
+
+        // Store new token
+        $stmt = $conn->prepare("INSERT INTO booking_rating_links (booking_id, token, expires_at) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $booking_id, $token, $expires_at);
+        $stmt->execute();
+        $stmt->close();
+
+        // 3. Build the link
+        $rate_link = "http://sinderellauat.free.nf/rc/rate_booking.php?token=$token";
+
+        // 4. Show alert with the link and redirect
+        echo "<script>
+            alert('Booking marked as done!\\n\\nLink for customer to rate:\\n$rate_link');
+            window.location.href = 'view_booking_details.php?booking_id=" . urlencode($booking_id) . "';
+        </script>";
+        exit();
+    }
+
+    if (isset($_POST['accept_booking'])) {
+        $stmt = $conn->prepare("UPDATE bookings SET booking_status='confirm' WHERE booking_id=?");
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+        $stmt->close();
+        header("Location: view_booking_details.php?booking_id=" . urlencode($booking_id));
+        exit();
+    }
+
+    if (isset($_POST['cancel_booking'])) {
+        $booking_id = $_POST['booking_id'];
+        $penaltyType = $_POST['penaltyType']; // 'penalty2', 'penalty24', or 'none'
+
+        // Fetch booking_type and service_id
+        $stmt = $conn->prepare("SELECT booking_type, service_id FROM bookings WHERE booking_id=?");
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+        $stmt->bind_result($booking_type, $service_id);
+        $stmt->fetch();
+        $stmt->close();
+
+        // Fetch penalty columns from pricings table
+        $bp_total = $bp_platform = $bp_sind = $bp_lvl1_amount = $bp_lvl2_amount = 0;
+        $ao_penalty24_total = $ao_penalty2_total = 0;
+        $ao_penalty24_platform = $ao_penalty2_platform = 0;
+        $ao_penalty24_sind = $ao_penalty2_sind = 0;
+        if ($penaltyType === 'penalty2' || $penaltyType === 'penalty24') {
+            $col_total = $penaltyType . '_total';
+            $col_platform = $penaltyType . '_platform';
+            $col_sind = $penaltyType . '_sind';
+            $col_lvl1 = $penaltyType . '_lvl1';
+            $col_lvl2 = $penaltyType . '_lvl2';
+
+            $stmt = $conn->prepare("SELECT $col_total, $col_platform, $col_sind, $col_lvl1, $col_lvl2 FROM pricings WHERE service_id=? AND service_type=? LIMIT 1");
+            $stmt->bind_param("is", $service_id, $booking_type);
+            $stmt->execute();
+            $stmt->bind_result($bp_total, $bp_platform, $bp_sind, $bp_lvl1_amount, $bp_lvl2_amount);
+            $stmt->fetch();
+            $stmt->close();
+
+            // --- Add-on penalties ---
+            $ao_price_col = 'ao_price_resched' . ($penaltyType === 'penalty2' ? '2' : '24');
+            $ao_platform_col = 'ao_platform_resched' . ($penaltyType === 'penalty2' ? '2' : '24');
+            $ao_sind_col = 'ao_sind_resched' . ($penaltyType === 'penalty2' ? '2' : '24');
+
+            $sql = "SELECT 
+                        COALESCE(SUM($ao_price_col),0), 
+                        COALESCE(SUM($ao_platform_col),0), 
+                        COALESCE(SUM($ao_sind_col),0)
+                    FROM booking_addons ba
+                    JOIN addon ao ON ba.ao_id = ao.ao_id
+                    WHERE ba.booking_id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("i", $booking_id);
+            $stmt->execute();
+            $stmt->bind_result($addon_penalty_total, $addon_penalty_platform, $addon_penalty_sind);
+            $stmt->fetch();
+            $stmt->close();
+
+            $bp_total    += $addon_penalty_total;
+            $bp_platform += $addon_penalty_platform;
+            $bp_sind     += $addon_penalty_sind;
+        }
+
+        // Update bookings table
+        $stmt = $conn->prepare("UPDATE bookings SET booking_status='cancel', bp_total=?, bp_platform=?, bp_sind=?, bp_lvl1_amount=?, bp_lvl2_amount=? WHERE booking_id=?");
+        $stmt->bind_param("dddddi", $bp_total, $bp_platform, $bp_sind, $bp_lvl1_amount, $bp_lvl2_amount, $booking_id);
+        $stmt->execute();
+        $stmt->close();
+
+        // Insert into booking_cancellation
+        $reason = "Cancelled by Admin";
+        $stmt = $conn->prepare("INSERT INTO booking_cancellation (booking_id, cancellation_reason) VALUES (?, ?)");
+        $stmt->bind_param("is", $booking_id, $reason);
+        $stmt->execute();
+        $stmt->close();
+
+        header("Location: view_booking_details.php?booking_id=" . urlencode($booking_id));
+        exit();
+    }
+
+    // Fetch rejection stats for this sinderella
+    $rejected_this_month = 0;
+    $total_rejected = 0;
+    $stmt = $conn->prepare("
+        SELECT 
+            COALESCE(SUM(MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())), 0) as month_count,
+            COUNT(*) as total_count
+        FROM sind_rejected_hist
+        WHERE sind_id = ?
+    ");
+    $stmt->bind_param("i", $sind_id);
+    $stmt->execute();
+    $stmt->bind_result($rejected_this_month, $total_rejected);
+    $stmt->fetch();
+    $stmt->close();
 } else {
     header("Location: view_bookings.php");
     exit();
@@ -298,7 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .profile-container select,
     .profile-container textarea {
         width: 80%;
-        padding: 5px;
+        /* padding: 5px; */
         margin-right: 10px;
     }
     .profile-container button {
@@ -344,7 +477,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <?php include '../includes/header_adm.php'; ?>
         <div class="profile-container">
             <h2>Edit Booking</h2>
-            <form method="POST">
+            <form method="POST" id="editBookingForm">
                 <input type="hidden" name="booking_id" value="<?php echo htmlspecialchars($booking_id); ?>">
                 <table>
                     <tr>
@@ -364,8 +497,9 @@ window.addEventListener('DOMContentLoaded', function() {
                     </tr>
                     <tr>
                         <td><label>Address</label></td>
-                        <td>: <input type="textarea" name="new_full_address" 
-                            value="<?php echo htmlspecialchars($full_address); ?>" required></td>
+                        <!-- <td>: <input type="textarea" name="new_full_address"  -->
+                            <!-- value="<?php echo htmlspecialchars($full_address); ?>" required></td> -->
+                        <td>: <textarea name="new_full_address" required><?php echo htmlspecialchars($full_address); ?></textarea></td>
                     </tr>
                     <tr>
                         <td><label>Sinderella</label></td>
@@ -410,13 +544,247 @@ window.addEventListener('DOMContentLoaded', function() {
                         <td>: <?php echo htmlspecialchars(ucfirst($booking_status)); ?></td>
                     </tr>
                 </table>
-                <button type="submit" name="save_changes">Save Changes</button>
-                <button type="button" onclick="window.location.href='view_booking_details.php?booking_id=<?php echo $booking_id; ?>'">Cancel</button>
-                <button type="submit" name="mark_paid" style="background:#28a745">Payment Received</button>
+                <button type="submit" name="save_changes" id="saveChangesBtn">Save Changes</button>
+                <button type="button" onclick="window.location.href='view_booking_details.php?booking_id=<?php echo $booking_id; ?>'">Discard Changes</button>
+                
+                <?php if (strtolower((string)$booking_status) === 'pending'): ?>
+                    <br><button type="submit" name="mark_paid" id="markPaidBtn" style="background:#28a745">Payment Received</button>
+                <?php endif; ?>
                 <input type="hidden" id="total_duration" value="<?php echo htmlspecialchars($total_duration); ?>">
+
+                <?php if (strtolower((string)$booking_status) === 'confirm'): ?>
+                    <br><button type="submit" name="mark_done" id="markDoneBtn" style="background:#28a745">Mark as Done</button>
+                <?php endif; ?>
+
+                <?php if (strtolower((string)$booking_status) === 'paid'): ?>
+                    <br>
+                    <button type="submit" name="accept_booking" id="acceptBookingBtn" style="background:#28a745">Accept Booking</button>
+                    <button type="button" id="rejectWithReasonBtn" style="background:#dc3545">Reject with Reason</button>
+                <?php endif; ?>
+
+                <?php if (in_array(strtolower((string)$booking_status), ['paid', 'confirm', 'rejected'])): ?>
+                    <br><button type="button" id="cancelBookingBtn" style="background:#dc3545">Cancel Booking</button>
+                <?php endif; ?>
             </form>
+
+            <form method="POST" id="cancelBookingHidden" style="display:none;">
+                <input type="hidden" name="cancel_booking" value="1">
+                <input type="hidden" name="booking_id" value="<?php echo htmlspecialchars($booking_id); ?>">
+                <input type="hidden" name="penaltyType" id="penaltyType" value="">
+            </form>
+
+            <div id="rejectModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+                <div style="background:#fff; padding:30px; border-radius:8px; text-align:center; min-width:320px; max-width:95vw;">
+                    <h3>Reject Service</h3>
+                    <div style="margin:15px 0 10px 0; font-size:15px;">
+                        <b>Rejected this month:</b> <?php echo $rejected_this_month; ?><br>
+                        <b>Total rejected:</b> <?php echo $total_rejected; ?>
+                    </div>
+                    <p style="margin-bottom:10px;">Please provide a reason for rejection:</p>
+                    <textarea id="rejectReason" rows="3" style="width:90%;" placeholder="Enter your reason here..." required></textarea>
+                    <br><br>
+                    <button onclick="submitRejectReason()" style="margin-right:10px;">Submit</button>
+                    <button onclick="closeRejectModal()">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 </body>
+<?php
+// Fetch penalty columns for this service and booking type (for JS)
+$penalty24_total = $penalty24_platform = $penalty24_sind = $penalty24_lvl1 = $penalty24_lvl2 = 0;
+$penalty2_total = $penalty2_platform = $penalty2_sind = $penalty2_lvl1 = $penalty2_lvl2 = 0;
+$ao_penalty24_total = $ao_penalty24_platform = $ao_penalty24_sind = 0;
+$ao_penalty2_total = $ao_penalty2_platform = $ao_penalty2_sind = 0;
+
+$stmt = $conn->prepare("SELECT penalty24_total, penalty24_platform, penalty24_sind, penalty24_lvl1, penalty24_lvl2,
+                               penalty2_total, penalty2_platform, penalty2_sind, penalty2_lvl1, penalty2_lvl2
+                        FROM pricings WHERE service_id=? AND service_type=? LIMIT 1");
+$stmt->bind_param("is", $service_id, $booking_type);
+$stmt->execute();
+$stmt->bind_result(
+    $penalty24_total, $penalty24_platform, $penalty24_sind, $penalty24_lvl1, $penalty24_lvl2,
+    $penalty2_total, $penalty2_platform, $penalty2_sind, $penalty2_lvl1, $penalty2_lvl2
+);
+$stmt->fetch();
+$stmt->close();
+
+foreach (['24', '2'] as $xx) {
+    if ($booking_type === 'a') {
+        $ao_price_col = "ao_price_resched$xx";
+        $ao_platform_col = "ao_platform_resched$xx";
+        $ao_sind_col = "ao_sind_resched$xx";
+    } else { 
+        $ao_price_col = "ao_price_resched{$xx}_re";
+        $ao_platform_col = "ao_platform_resched{$xx}_re";
+        $ao_sind_col = "ao_sind_resched{$xx}_re";
+    }
+    $stmt = $conn->prepare("SELECT 
+        COALESCE(SUM($ao_price_col),0), 
+        COALESCE(SUM($ao_platform_col),0), 
+        COALESCE(SUM($ao_sind_col),0)
+        FROM booking_addons ba
+        JOIN addon ao ON ba.ao_id = ao.ao_id
+        WHERE ba.booking_id = ?");
+    $stmt->bind_param("i", $booking_id);
+    $stmt->execute();
+    $stmt->bind_result($ao_total, $ao_platform, $ao_sind);
+    $stmt->fetch();
+    $stmt->close();
+    if ($xx == '24') {
+        $ao_penalty24_total = $ao_total;
+        $ao_penalty24_platform = $ao_platform;
+        $ao_penalty24_sind = $ao_sind;
+    } else {
+        $ao_penalty2_total = $ao_total;
+        $ao_penalty2_platform = $ao_platform;
+        $ao_penalty2_sind = $ao_sind;
+    }
+}
+?>
+<script>
+var penaltyData = <?php echo json_encode([
+    'penalty24_total' => (float)$penalty24_total + (float)$ao_penalty24_total,
+    'penalty24_platform' => (float)$penalty24_platform + (float)$ao_penalty24_platform,
+    'penalty24_sind' => (float)$penalty24_sind + (float)$ao_penalty24_sind,
+    'penalty24_lvl1' => (float)$penalty24_lvl1,
+    'penalty24_lvl2' => (float)$penalty24_lvl2,
+    'penalty2_total' => (float)$penalty2_total + (float)$ao_penalty2_total,
+    'penalty2_platform' => (float)$penalty2_platform + (float)$ao_penalty2_platform,
+    'penalty2_sind' => (float)$penalty2_sind + (float)$ao_penalty2_sind,
+    'penalty2_lvl1' => (float)$penalty2_lvl1,
+    'penalty2_lvl2' => (float)$penalty2_lvl2,
+]); ?>;
+document.addEventListener('DOMContentLoaded', function() {
+    var markPaidBtn = document.getElementById('markPaidBtn');
+    if (markPaidBtn) {
+        markPaidBtn.addEventListener('click', function(e) {
+            var confirmed = confirm("Are you sure you have received the payment? \n\nThis action cannot be undone.");
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    var saveChangesBtn = document.getElementById('saveChangesBtn');
+    var editBookingForm = document.getElementById('editBookingForm');
+    if (saveChangesBtn && editBookingForm) {
+        saveChangesBtn.addEventListener('click', function(e) {
+            // Get current status from PHP
+            var currentStatus = "<?php echo strtolower($booking_status); ?>";
+            var msg = "Are you sure you want to save the changes?\n\nThe Sinderella / new Sinderella (if changed) will receive the updated booking details.";
+            if (currentStatus === "rejected") {
+                msg = "Are you sure you want to save the changes?\n\nThe Sinderella / new Sinderella (if changed) will receive the updated booking details\n\nIf you save changes, the status will be changed from 'REJECTED' to 'PAID'.";
+            }
+            var confirmed = confirm(msg);
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    var markDoneBtn = document.getElementById('markDoneBtn');
+    if (markDoneBtn) {
+        markDoneBtn.addEventListener('click', function(e) {
+            var confirmed = confirm("Please CONFIRM Sinderella have COMPLETED the service.\n\nThe rating link will be send to the customer.\n\nThis action CANNOT be UNDONE.");
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    var acceptBookingBtn = document.getElementById('acceptBookingBtn');
+    if (acceptBookingBtn) {
+        acceptBookingBtn.addEventListener('click', function(e) {
+            var confirmed = confirm("Please CONFIRM Sinderella availability. \n\nThis action CANNOT be UNDONE.");
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    var rejectWithReasonBtn = document.getElementById('rejectWithReasonBtn');
+    if (rejectWithReasonBtn) {
+        rejectWithReasonBtn.addEventListener('click', function(e) {
+            document.getElementById('rejectModal').style.display = 'flex';
+            document.getElementById('rejectReason').value = '';
+        });
+    }
+
+    var cancelBookingBtn = document.getElementById('cancelBookingBtn');
+    if (cancelBookingBtn) {
+        cancelBookingBtn.addEventListener('click', function(e) {
+            var bookingDate = "<?php echo $booking_date; ?>";
+            var bookingFromTime = "<?php echo $booking_from_time; ?>";
+            var bookingStart = new Date(bookingDate + 'T' + bookingFromTime);
+            var now = new Date();
+            var diffMs = bookingStart - now;
+            var diffH = diffMs / (1000 * 60 * 60);
+
+            var penaltyType = '';
+            if (diffH < 24) {
+                penaltyType = 'penalty2';
+            } else if (diffH < 48) {
+                penaltyType = 'penalty24';
+            } else {
+                penaltyType = 'none';
+            }
+
+            var bookingTotal = <?php echo json_encode((float)$total_price); ?>;
+            var earnings = (penaltyType === 'none') ? 0 : penaltyData[penaltyType + '_total'];
+            var refund = (bookingTotal - earnings).toFixed(2);
+
+            var timeMsg = (diffMs > 0)
+                ? ("Booking starts in " + Math.floor(diffH) + " hour(s) " + Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)) + " minute(s)")
+                : "Booking start time has passed.";
+
+            var msg = timeMsg + "\n\nBooking Total: RM " + bookingTotal.toFixed(2) +
+                    "\nEarnings (Penalty): RM " + earnings.toFixed(2) +
+                    "\nAmount to Refund: RM " + refund +
+                    "\n\nAre you sure you want to cancel this booking?";
+
+            document.getElementById('penaltyType').value = penaltyType;
+
+            if (confirm(msg)) {
+                document.getElementById('cancelBookingHidden').submit();
+            }
+        });
+    }
+});
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+function submitRejectReason() {
+    var reason = document.getElementById('rejectReason').value.trim();
+    if (!reason) {
+        alert('Please provide a reason for rejection.');
+        return;
+    }
+    var confirmed = confirm("This will add to the rejected history.\n\nAre you sure you want to proceed?");
+    if (!confirmed) {
+        return;
+    }
+    var bookingId = <?php echo json_encode($booking_id); ?>;
+    var sindId = <?php echo json_encode($sind_id); ?>; // Use the current sind_id for this booking
+    var rejectedThisMonth = <?php echo json_encode($rejected_this_month); ?>;
+    fetch('../rs/reject_booking.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'booking_id=' + encodeURIComponent(bookingId) +
+              '&sind_id=' + encodeURIComponent(sindId) +
+              '&reason=' + encodeURIComponent(reason) + 
+              '&rejected_this_month=' + encodeURIComponent(rejectedThisMonth)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) {
+            closeRejectModal();
+            window.location.reload();
+        }
+    });
+}
+</script>
 </html>

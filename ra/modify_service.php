@@ -254,7 +254,7 @@ if ($service_id) {
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl2_resched24" value="<?php echo $pricing['adhoc']['penalty24_lvl2'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl2_resched2" value="<?php echo $pricing['adhoc']['penalty2_lvl2'] ?? 0; ?>" required></td>
                         </tr>
-                        <tr>
+                        <!-- <tr>
                             <td>Level 3 Referral</td>
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl3" value="<?php echo $pricing['adhoc']['lvl3'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl3_resched24" value="<?php echo $pricing['adhoc']['penalty24_lvl3'] ?? 0; ?>" required></td>
@@ -265,7 +265,7 @@ if ($service_id) {
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl4" value="<?php echo $pricing['adhoc']['lvl4'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl4_resched24" value="<?php echo $pricing['adhoc']['penalty24_lvl4'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="adhoc_pr_lvl4_resched2" value="<?php echo $pricing['adhoc']['penalty2_lvl4'] ?? 0; ?>" required></td>
-                        </tr>
+                        </tr> -->
                         <!-- <tr>
                             <th colspan="5" style="background:#eee;"><strong>Sinderella Breakdown</strong></th>
                         </tr>
@@ -337,7 +337,7 @@ if ($service_id) {
                             <td><input type="number" step="0.01" name="rec_pr_lvl2_resched24" value="<?php echo $pricing['recurring']['penalty24_lvl2'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="rec_pr_lvl2_resched2" value="<?php echo $pricing['recurring']['penalty2_lvl2'] ?? 0; ?>" required></td>
                         </tr>
-                        <tr>
+                        <!-- <tr>
                             <td>Level 3 Referral</td>
                             <td><input type="number" step="0.01" name="rec_pr_lvl3" value="<?php echo $pricing['recurring']['lvl3'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="rec_pr_lvl3_resched24" value="<?php echo $pricing['recurring']['penalty24_lvl3'] ?? 0; ?>" required></td>
@@ -348,7 +348,7 @@ if ($service_id) {
                             <td><input type="number" step="0.01" name="rec_pr_lvl4" value="<?php echo $pricing['recurring']['lvl4'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="rec_pr_lvl4_resched24" value="<?php echo $pricing['recurring']['penalty24_lvl4'] ?? 0; ?>" required></td>
                             <td><input type="number" step="0.01" name="rec_pr_lvl4_resched2" value="<?php echo $pricing['recurring']['penalty2_lvl4'] ?? 0; ?>" required></td>
-                        </tr>
+                        </tr> -->
                         <!-- <tr>
                             <th colspan="5" style="background:#eee;"><strong>Sinderella Breakdown</strong></th>
                         </tr>
@@ -770,9 +770,9 @@ if ($service_id) {
             var prSind = parseFloat(document.querySelector('input[name="adhoc_pr_sind"]').value) || 0;
             var prLvl1 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl1"]').value) || 0;
             var prLvl2 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl2"]').value) || 0;
-            var prLvl3 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl3"]').value) || 0;
-            var prLvl4 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl4"]').value) || 0;
-            var sumCategories = (prPlatform + prSind + prLvl1 + prLvl2 + prLvl3 + prLvl4).toFixed(2);
+            // var prLvl3 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl3"]').value) || 0;
+            // var prLvl4 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl4"]').value) || 0;
+            var sumCategories = (prPlatform + prSind + prLvl1 + prLvl2).toFixed(2);
             if (sumCategories != totalPrice.toFixed(2)) {
                 alert('Ad-hoc: \nPlatform + Sinderella + Level 1-4 Referral must equal Total Price\nTotal Price: ' + totalPrice.toFixed(2) + '\nSum of Categories: ' + sumCategories);
                 return;
@@ -783,9 +783,9 @@ if ($service_id) {
             var prSind24 = parseFloat(document.querySelector('input[name="adhoc_pr_sind_resched24"]').value) || 0;
             var prLvl124 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl1_resched24"]').value) || 0;
             var prLvl224 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl2_resched24"]').value) || 0;
-            var prLvl324 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl3_resched24"]').value) || 0;
-            var prLvl424 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl4_resched24"]').value) || 0;
-            var sumCategories24 = (prPlatform24 + prSind24 + prLvl124 + prLvl224 + prLvl324 + prLvl424).toFixed(2);
+            // var prLvl324 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl3_resched24"]').value) || 0;
+            // var prLvl424 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl4_resched24"]').value) || 0;
+            var sumCategories24 = (prPlatform24 + prSind24 + prLvl124 + prLvl224).toFixed(2);
             if (sumCategories24 != totalPrice24.toFixed(2)) {
                 alert('Ad-hoc Penalty < 24h: \nPlatform + Sinderella + Level 1-4 Referral must equal Total Price\nTotal Price: ' + totalPrice24.toFixed(2) + '\nSum of Categories: ' + sumCategories24);
                 return;
@@ -796,9 +796,9 @@ if ($service_id) {
             var prSind2 = parseFloat(document.querySelector('input[name="adhoc_pr_sind_resched2"]').value) || 0;
             var prLvl12 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl1_resched2"]').value) || 0;
             var prLvl22 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl2_resched2"]').value) || 0;
-            var prLvl32 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl3_resched2"]').value) || 0;
-            var prLvl42 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl4_resched2"]').value) || 0;
-            var sumCategories2 = (prPlatform2 + prSind2 + prLvl12 + prLvl22 + prLvl32 + prLvl42).toFixed(2);
+            // var prLvl32 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl3_resched2"]').value) || 0;
+            // var prLvl42 = parseFloat(document.querySelector('input[name="adhoc_pr_lvl4_resched2"]').value) || 0;
+            var sumCategories2 = (prPlatform2 + prSind2 + prLvl12 + prLvl22).toFixed(2);
             if (sumCategories2 != totalPrice2.toFixed(2)) {
                 alert('Ad-hoc Penalty < 2h: \nPlatform + Sinderella + Level 1-4 Referral must equal Total Price\nTotal Price: ' + totalPrice2.toFixed(2) + '\nSum of Categories: ' + sumCategories2);
                 return;
@@ -809,9 +809,9 @@ if ($service_id) {
             var recSind = parseFloat(document.querySelector('input[name="rec_pr_sind"]').value) || 0;
             var recLvl1 = parseFloat(document.querySelector('input[name="rec_pr_lvl1"]').value) || 0;
             var recLvl2 = parseFloat(document.querySelector('input[name="rec_pr_lvl2"]').value) || 0;
-            var recLvl3 = parseFloat(document.querySelector('input[name="rec_pr_lvl3"]').value) || 0;
-            var recLvl4 = parseFloat(document.querySelector('input[name="rec_pr_lvl4"]').value) || 0;
-            var recSumCategories = (recPlatform + recSind + recLvl1 + recLvl2 + recLvl3 + recLvl4).toFixed(2);
+            // var recLvl3 = parseFloat(document.querySelector('input[name="rec_pr_lvl3"]').value) || 0;
+            // var recLvl4 = parseFloat(document.querySelector('input[name="rec_pr_lvl4"]').value) || 0;
+            var recSumCategories = (recPlatform + recSind + recLvl1 + recLvl2).toFixed(2);
             if (recSumCategories != recTotalPrice.toFixed(2)) {
                 alert('Recurring: \nPlatform + Sinderella + Level 1-4 Referral must equal Total Price\nTotal Price: ' + recTotalPrice.toFixed(2) + '\nSum of Categories: ' + recSumCategories);
                 return;
@@ -822,9 +822,10 @@ if ($service_id) {
             var recSind24 = parseFloat(document.querySelector('input[name="rec_pr_sind_resched24"]').value) || 0;
             var recLvl124 = parseFloat(document.querySelector('input[name="rec_pr_lvl1_resched24"]').value) || 0;
             var recLvl224 = parseFloat(document.querySelector('input[name="rec_pr_lvl2_resched24"]').value) || 0;
-            var recLvl324 = parseFloat(document.querySelector('input[name="rec_pr_lvl3_resched24"]').value) || 0;
-            var recLvl424 = parseFloat(document.querySelector('input[name="rec_pr_lvl4_resched24"]').value) || 0;
-            var recSumCategories24 = (recPlatform24 + recSind24 + recLvl124 + recLvl224 + recLvl324 + recLvl424).toFixed(2);
+            // var recLvl324 = parseFloat(document.querySelector('input[name="rec_pr_lvl3_resched24"]').value) || 0;
+            // var recLvl424 = parseFloat(document.querySelector('input[name="rec_pr_lvl4_resched24"]').value) || 0;
+            var recSumCategories24 = (recPlatform24 + recSind24 + recLvl124 + recLvl224).toFixed(2);
+            // var recSumCategories24 = (recPlatform24 + recSind24 + recLvl124 + recLvl224 + recLvl324 + recLvl424).toFixed(2);
             if (recSumCategories24 != recTotalPrice24.toFixed(2)) {
                 alert('Recurring Penalty < 24h: \nPlatform + Sinderella + Level 1-4 Referral must equal Total Price\nTotal Price: ' + recTotalPrice24.toFixed(2) + '\nSum of Categories: ' + recSumCategories24);
                 return;
@@ -835,9 +836,10 @@ if ($service_id) {
             var recSind2 = parseFloat(document.querySelector('input[name="rec_pr_sind_resched2"]').value) || 0;
             var recLvl12 = parseFloat(document.querySelector('input[name="rec_pr_lvl1_resched2"]').value) || 0;
             var recLvl22 = parseFloat(document.querySelector('input[name="rec_pr_lvl2_resched2"]').value) || 0;
-            var recLvl32 = parseFloat(document.querySelector('input[name="rec_pr_lvl3_resched2"]').value) || 0;
-            var recLvl42 = parseFloat(document.querySelector('input[name="rec_pr_lvl4_resched2"]').value) || 0;
-            var recSumCategories2 = (recPlatform2 + recSind2 + recLvl12 + recLvl22 + recLvl32 + recLvl42).toFixed(2);
+            // var recLvl32 = parseFloat(document.querySelector('input[name="rec_pr_lvl3_resched2"]').value) || 0;
+            // var recLvl42 = parseFloat(document.querySelector('input[name="rec_pr_lvl4_resched2"]').value) || 0;
+            var recSumCategories2 = (recPlatform2 + recSind2 + recLvl12 + recLvl22).toFixed(2);
+            // var recSumCategories2 = (recPlatform2 + recSind2 + recLvl12 + recLvl22 + recLvl32 + recLvl42).toFixed(2);
             if (recSumCategories2 != recTotalPrice2.toFixed(2)) {
                 alert('Recurring Penalty < 2h: \nPlatform + Sinderella + Level 1-4 Referral must equal Total Price\nTotal Price: ' + recTotalPrice2.toFixed(2) + '\nSum of Categories: ' + recSumCategories2);
                 return;

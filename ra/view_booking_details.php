@@ -234,6 +234,45 @@ if ($booking_status == 'rejected') {
     $stmt->fetch();
     $stmt->close();
 }
+
+// Fetch all bookings for this recurring set if booking_type is 'r'
+$recurring_id = null;
+$recurring_bookings = [];
+if ($booking_type == 'r') {
+    // Get recurring_id for this booking
+    $stmt = $conn->prepare("SELECT recurring_id FROM booking_recurring WHERE booking_id = ?");
+    $stmt->bind_param("i", $booking_id);
+    $stmt->execute();
+    $stmt->bind_result($recurring_id);
+    $stmt->fetch();
+    $stmt->close();
+
+    if ($recurring_id) {
+        // Get all bookings with same recurring_id
+        $stmt = $conn->prepare("
+            SELECT b.booking_id, b.booking_date, b.booking_from_time, b.booking_to_time, s.sind_name, b.booking_status
+            FROM booking_recurring br
+            JOIN bookings b ON br.booking_id = b.booking_id
+            JOIN sinderellas s ON b.sind_id = s.sind_id
+            WHERE br.recurring_id = ?
+            ORDER BY b.booking_date ASC, b.booking_from_time ASC
+        ");
+        $stmt->bind_param("i", $recurring_id);
+        $stmt->execute();
+        $stmt->bind_result($rec_bid, $rec_date, $rec_from, $rec_to, $rec_sind, $rec_status);
+        while ($stmt->fetch()) {
+            $recurring_bookings[] = [
+                'booking_id' => $rec_bid,
+                'booking_date' => $rec_date,
+                'booking_from_time' => $rec_from,
+                'booking_to_time' => $rec_to,
+                'sind_name' => $rec_sind,
+                'booking_status' => $rec_status
+            ];
+        }
+        $stmt->close();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -476,6 +515,14 @@ if ($booking_status == 'rejected') {
                     </table> -->
                 <?php endif; ?>
 
+                <?php if ($booking_status == 'done'): ?>
+                    <button type="button" onclick="openRatingModal()">Rate & Review Sinderella</button><br>
+                <?php endif; ?>
+
+                <?php if (($booking_status == 'done' || $booking_status == 'rated') && !$cust_rating_exists): ?>
+                    <button type="button" id="rateCustomerBtn">Comment Customer</button><br>
+                <?php endif; ?>
+
                 <?php if (in_array($booking_status, ['pending', 'confirm', 'rejected', 'paid'])): ?>
                     <button type="button" onclick="editBooking()">Edit Booking</button>
                 <?php endif; ?>
@@ -557,6 +604,64 @@ if ($booking_status == 'rejected') {
                         <button onclick="closeSindRatingsPopup()">Close</button>
                     </div>
                 </div>
+
+                <div id="ratingModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+                    <div style="background:#fff; padding:30px; border-radius:8px; text-align:center; min-width:300px;">
+                        <h3>Rate & Review Sinderella</h3>
+                        <div id="starContainer" style="font-size:2em; margin-bottom:10px;">
+                            <span class="star" data-value="1">&#9734;</span>
+                            <span class="star" data-value="2">&#9734;</span>
+                            <span class="star" data-value="3">&#9734;</span>
+                            <span class="star" data-value="4">&#9734;</span>
+                            <span class="star" data-value="5">&#9734;</span>
+                        </div>
+                        <textarea id="ratingComment" rows="4" style="width:90%;" placeholder="Leave a comment (optional)"></textarea>
+                        <br>
+                        <button onclick="submitRating()">Submit</button>
+                        <button onclick="closeRatingModal()">Cancel</button>
+                    </div>
+                </div>
+
+                <div id="custRatingModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+                    <div style="background:#fff; padding:30px; border-radius:8px; text-align:center; min-width:300px;">
+                        <h3>Comment to Customer</h3>
+                        <textarea id="custRatingCommentPpl" rows="3" style="width:90%;" placeholder="Comment to Customer (optional)"></textarea>
+                        <br>
+                        <h3>Comment to House</h3>
+                        <textarea id="custRatingCommentHse" rows="3" style="width:90%;" placeholder="Comment to House (optional)"></textarea>
+                        <br>
+                        <button onclick="submitCustRating()">Submit</button>
+                        <button onclick="closeCustRatingModal()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-container" style="box-shadow:none; padding-top: 1px;">
+                <?php if ($booking_type == 'r' && $recurring_id && count($recurring_bookings) > 0): ?>
+                    <hr>
+                    <h3>All Bookings in This Recurring Set</h3>
+                    <table border="1" cellpadding="8" style="border-collapse:collapse; text-align:center; width:100%; margin-top:10px;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Sinderella</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($recurring_bookings as $rb): ?>
+                            <tr style="cursor:pointer;<?php if ($rb['booking_id'] == $booking_id) echo 'background:#e0eaff;'; ?>"
+                                onclick="window.location.href='view_booking_details.php?booking_id=<?php echo $rb['booking_id']; ?>'">
+                                <td><?php echo htmlspecialchars(formatDate($rb['booking_date'])); ?></td>
+                                <td><?php echo htmlspecialchars(formatTime($rb['booking_from_time'])) . ' - ' . htmlspecialchars(formatTime($rb['booking_to_time'])); ?></td>
+                                <td><?php echo htmlspecialchars($rb['sind_name']); ?></td>
+                                <td><?php echo htmlspecialchars(ucfirst($rb['booking_status'])); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -653,6 +758,118 @@ if ($booking_status == 'rejected') {
             document.body.appendChild(form);
             form.submit();
         }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const rateBtn = document.getElementById('rateCustomerBtn');
+        if (rateBtn) {
+            rateBtn.addEventListener('click', openCustRatingModal);
+        }
+    });
+
+    function openCustRatingModal() {
+        document.getElementById('custRatingModal').style.display = 'flex';
+        document.getElementById('custRatingCommentPpl').value = '';
+        document.getElementById('custRatingCommentHse').value = '';
+    }
+
+    function closeCustRatingModal() {
+        document.getElementById('custRatingModal').style.display = 'none';
+    }
+
+    function submitCustRating() {
+        const commentPpl = document.getElementById('custRatingCommentPpl').value.trim();
+        const commentHse = document.getElementById('custRatingCommentHse').value.trim();
+        if (!commentPpl && !commentHse) {
+            alert('Please enter at least one comment.');
+            return;
+        }
+
+        const bookingId = <?php echo json_encode($booking_id); ?>;
+        const sindId = <?php echo json_encode($sinderella_id); ?>;
+        const custId = <?php echo json_encode($cust_id); ?>;
+
+        const formData = new FormData();
+        formData.append('booking_id', bookingId);
+        formData.append('sind_id', sindId);
+        formData.append('cust_id', custId);
+        formData.append('cmt_ppl', commentPpl);
+        formData.append('cmt_hse', commentHse);
+
+        fetch('../rs/submit_cust_rating.php', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                closeCustRatingModal();
+                location.reload();
+            }
+        });
+    }
+
+    let selectedRating = 0;
+
+    function openRatingModal() {
+        document.getElementById('ratingModal').style.display = 'flex';
+        highlightStars(0);
+        document.getElementById('ratingComment').value = '';
+    }
+
+    function closeRatingModal() {
+        document.getElementById('ratingModal').style.display = 'none';
+    }
+
+    function highlightStars(rating) {
+        const stars = document.querySelectorAll('#starContainer .star');
+        stars.forEach(star => {
+            star.innerHTML = (parseInt(star.dataset.value) <= rating) ? '★' : '☆';
+        });
+        selectedRating = rating;
+    }
+
+    document.querySelectorAll('#starContainer .star').forEach(star => {
+        star.addEventListener('mouseover', function() {
+            highlightStars(parseInt(this.dataset.value));
+        });
+        star.addEventListener('click', function() {
+            highlightStars(parseInt(this.dataset.value));
+        });
+    });
+
+    document.getElementById('starContainer').addEventListener('mouseleave', function() {
+        highlightStars(selectedRating);
+    });
+
+    function submitRating() {
+        if (selectedRating < 1 || selectedRating > 5) {
+            alert('Please select a rating.');
+            return;
+        }
+        const comment = document.getElementById('ratingComment').value;
+        const bookingId = <?php echo json_encode($booking_id); ?>;
+        const sindId = <?php echo json_encode($sinderella_id); ?>;
+        const custId = <?php echo json_encode($cust_id); ?>;
+
+        const formData = new FormData();
+        formData.append('booking_id', bookingId);
+        formData.append('sind_id', sindId);
+        formData.append('cust_id', custId);
+        formData.append('rate', selectedRating);
+        formData.append('comment', comment);
+
+        fetch('../rc/submit_rating.php', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                closeRatingModal();
+                location.reload();
+            }
+        });
     }
     </script>
 </body>

@@ -25,27 +25,65 @@ document.addEventListener('DOMContentLoaded', function () {
             const th = document.createElement('th');
             th.textContent = day;
     
-            // Add time input fields for the day header
-            const timeInputs = document.createElement('div');
-            timeInputs.className = 'time-inputs';
+            // // Add time input fields for the day header
+            // const timeInputs = document.createElement('div');
+            // timeInputs.className = 'time-inputs';
     
-            const input1 = document.createElement('input');
-            input1.type = 'time';
-            input1.className = 'time-input';
-            input1.value = dayBasedTimes[day]?.available_from1 === '00:00:00' ? '' : dayBasedTimes[day]?.available_from1 || '';
+            // const input1 = document.createElement('input');
+            // input1.type = 'time';
+            // input1.className = 'time-input';
+            // input1.value = dayBasedTimes[day]?.available_from1 === '00:00:00' ? '' : dayBasedTimes[day]?.available_from1 || '';
     
-            const input2 = document.createElement('input');
-            input2.type = 'time';
-            input2.className = 'time-input';
-            input2.value = dayBasedTimes[day]?.available_from2 === '00:00:00' ? '' : dayBasedTimes[day]?.available_from2 || '';
+            // const input2 = document.createElement('input');
+            // input2.type = 'time';
+            // input2.className = 'time-input';
+            // input2.value = dayBasedTimes[day]?.available_from2 === '00:00:00' ? '' : dayBasedTimes[day]?.available_from2 || '';
+        
+            // // Create remove icon for input1
+            // const removeDayBtn1 = document.createElement('span');
+            // removeDayBtn1.textContent = '❌';
+            // removeDayBtn1.title = 'Clear this time slot';
+            // removeDayBtn1.style.cursor = 'pointer';
+            // removeDayBtn1.style.marginLeft = '5px';
+            // removeDayBtn1.style.color = '#e53935';
+            // removeDayBtn1.onclick = function(e) {
+            //     e.stopPropagation();
+            //     input1.value = '';
+            //     handleDayTimeChange(day, input1, input2);
+            // };
+
+            // // Create remove icon for input2
+            // const removeDayBtn2 = document.createElement('span');
+            // removeDayBtn2.textContent = '❌';
+            // removeDayBtn2.title = 'Clear this time slot';
+            // removeDayBtn2.style.cursor = 'pointer';
+            // removeDayBtn2.style.marginLeft = '5px';
+            // removeDayBtn2.style.color = '#e53935';
+            // removeDayBtn2.onclick = function(e) {
+            //     e.stopPropagation();
+            //     input2.value = '';
+            //     handleDayTimeChange(day, input1, input2);
+            // };
     
-            // Add event listeners for autosave
-            input1.addEventListener('change', () => handleDayTimeChange(day, input1, input2));
-            input2.addEventListener('change', () => handleDayTimeChange(day, input1, input2));
+            // // Add event listeners for autosave
+            // input1.addEventListener('change', () => handleDayTimeChange(day, input1, input2));
+            // input2.addEventListener('change', () => handleDayTimeChange(day, input1, input2));
     
-            timeInputs.appendChild(input1);
-            timeInputs.appendChild(input2);
-            th.appendChild(timeInputs);
+            // const inputGroup1 = document.createElement('div');
+            // inputGroup1.style.display = 'flex';
+            // inputGroup1.style.alignItems = 'center';
+            // inputGroup1.appendChild(input1);
+            // inputGroup1.appendChild(removeDayBtn1);
+
+            // const inputGroup2 = document.createElement('div');
+            // inputGroup2.style.display = 'flex';
+            // inputGroup2.style.alignItems = 'center';
+            // inputGroup2.appendChild(input2);
+            // inputGroup2.appendChild(removeDayBtn2);
+
+            // timeInputs.appendChild(inputGroup1);
+            // timeInputs.appendChild(inputGroup2);
+            // th.appendChild(timeInputs);
     
             headerRow.appendChild(th);
         });
@@ -122,6 +160,37 @@ document.addEventListener('DOMContentLoaded', function () {
                     input2.type = 'time';
                     input2.className = 'time-input';
     
+                    // Create remove icon for input1
+                    const removeBtn1 = document.createElement('span');
+                    removeBtn1.textContent = '❌';
+                    removeBtn1.title = 'Clear this time slot';
+                    removeBtn1.style.cursor = 'pointer';
+                    removeBtn1.style.marginLeft = '5px';
+                    removeBtn1.style.color = '#e53935';
+                    removeBtn1.onclick = function(e) {
+                        e.stopPropagation();
+                        input1.value = '';
+                        // Trigger save logic
+                        if (cellDate > today) {
+                            handleTimeChange(cell.dataset.date, input1, input2);
+                        }
+                    };
+
+                    // Create remove icon for input2
+                    const removeBtn2 = document.createElement('span');
+                    removeBtn2.textContent = '❌';
+                    removeBtn2.title = 'Clear this time slot';
+                    removeBtn2.style.cursor = 'pointer';
+                    removeBtn2.style.marginLeft = '5px';
+                    removeBtn2.style.color = '#e53935';
+                    removeBtn2.onclick = function(e) {
+                        e.stopPropagation();
+                        input2.value = '';
+                        // Trigger save logic
+                        if (cellDate > today) {
+                            handleTimeChange(cell.dataset.date, input1, input2);
+                        }
+                    };
                     // Disable inputs for today and earlier
                     if (cellDate <= today) {
                         input1.disabled = true;
@@ -165,8 +234,26 @@ document.addEventListener('DOMContentLoaded', function () {
                         input2.addEventListener('change', () => handleTimeChange(cell.dataset.date, input1, input2));
                     }
 
-                    timeInputs.appendChild(input1);
-                    timeInputs.appendChild(input2);
+                    // timeInputs.appendChild(input1);
+                    // timeInputs.appendChild(removeBtn1);
+                    // timeInputs.appendChild(input2);
+                    // timeInputs.appendChild(removeBtn2);
+
+                    const inputGroup1 = document.createElement('div');
+                    inputGroup1.style.display = 'flex';
+                    inputGroup1.style.alignItems = 'center';
+                    inputGroup1.appendChild(input1);
+                    inputGroup1.appendChild(removeBtn1);
+
+                    const inputGroup2 = document.createElement('div');
+                    inputGroup2.style.display = 'flex';
+                    inputGroup2.style.alignItems = 'center';
+                    inputGroup2.appendChild(input2);
+                    inputGroup2.appendChild(removeBtn2);
+
+                    timeInputs.appendChild(inputGroup1);
+                    timeInputs.appendChild(inputGroup2);
+
                     cell.appendChild(timeInputs);
     
                     date++;
@@ -208,7 +295,97 @@ document.addEventListener('DOMContentLoaded', function () {
         monthYearCell.className = 'month-year';
         monthYearRow.appendChild(monthYearCell);
         calendar.insertBefore(monthYearRow, calendar.firstChild);
+
+        return calendar;
+    }
+
+    function renderDayBasedTable() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize to midnight
+
+        // const firstDay = new Date(year, month).getDay();
+        // const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const calendar = document.createElement('table');
+        calendar.className = 'calendar';
     
+        const headerRow = document.createElement('tr');
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        daysOfWeek.forEach(day => {
+            const th = document.createElement('th');
+            th.textContent = day;
+    
+            // Add time input fields for the day header
+            const timeInputs = document.createElement('div');
+            timeInputs.className = 'time-inputs';
+    
+            const input1 = document.createElement('input');
+            input1.type = 'time';
+            input1.className = 'time-input';
+            input1.value = dayBasedTimes[day]?.available_from1 === '00:00:00' ? '' : dayBasedTimes[day]?.available_from1 || '';
+    
+            const input2 = document.createElement('input');
+            input2.type = 'time';
+            input2.className = 'time-input';
+            input2.value = dayBasedTimes[day]?.available_from2 === '00:00:00' ? '' : dayBasedTimes[day]?.available_from2 || '';
+        
+            // Create remove icon for input1
+            const removeDayBtn1 = document.createElement('span');
+            removeDayBtn1.textContent = '❌';
+            removeDayBtn1.title = 'Clear this time slot';
+            removeDayBtn1.style.cursor = 'pointer';
+            removeDayBtn1.style.marginLeft = '5px';
+            removeDayBtn1.style.color = '#e53935';
+            removeDayBtn1.onclick = function(e) {
+                e.stopPropagation();
+                input1.value = '';
+                handleDayTimeChange(day, input1, input2);
+            };
+
+            // Create remove icon for input2
+            const removeDayBtn2 = document.createElement('span');
+            removeDayBtn2.textContent = '❌';
+            removeDayBtn2.title = 'Clear this time slot';
+            removeDayBtn2.style.cursor = 'pointer';
+            removeDayBtn2.style.marginLeft = '5px';
+            removeDayBtn2.style.color = '#e53935';
+            removeDayBtn2.onclick = function(e) {
+                e.stopPropagation();
+                input2.value = '';
+                handleDayTimeChange(day, input1, input2);
+            };
+    
+            // Add event listeners for autosave
+            input1.addEventListener('change', () => handleDayTimeChange(day, input1, input2));
+            input2.addEventListener('change', () => handleDayTimeChange(day, input1, input2));
+    
+            const inputGroup1 = document.createElement('div');
+            inputGroup1.style.display = 'flex';
+            inputGroup1.style.alignItems = 'center';
+            inputGroup1.appendChild(input1);
+            inputGroup1.appendChild(removeDayBtn1);
+
+            const inputGroup2 = document.createElement('div');
+            inputGroup2.style.display = 'flex';
+            inputGroup2.style.alignItems = 'center';
+            inputGroup2.appendChild(input2);
+            inputGroup2.appendChild(removeDayBtn2);
+
+            timeInputs.appendChild(inputGroup1);
+            timeInputs.appendChild(inputGroup2);
+            th.appendChild(timeInputs);
+    
+            headerRow.appendChild(th);
+        });
+        calendar.appendChild(headerRow);
+    
+        const monthYearRow = document.createElement('tr');
+        const monthYearCell = document.createElement('td');
+        monthYearCell.colSpan = 7;
+        monthYearCell.textContent = `Day-Based Weekly Schedule`;
+        monthYearCell.className = 'month-year';
+        monthYearRow.appendChild(monthYearCell);
+        calendar.insertBefore(monthYearRow, calendar.firstChild);
+
         return calendar;
     }
 
@@ -429,9 +606,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadAvailableTimes() {
-        fetch('../rs/get_available_times.php', {
+        // fetch('../rs/get_available_times.php', {
+        //     method: 'GET'
+        // })
+        fetch('../rs/get_available_times.php?sind_id=' + encodeURIComponent(sind_id), {
             method: 'GET'
-        }).then(response => response.json()).then(data => {
+        })
+        .then(response => response.json()).then(data => {
             availableTimes = data.dateBased;
             dayBasedTimes = data.dayBased;
             // loadCalendars();
@@ -443,9 +624,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function loadCalendars() {
         calendarContainer.innerHTML = '';
+        // Render and append the day-based table at the top
+        const dayBasedTable = renderDayBasedTable();
+        const dayBasedTableContainer = document.getElementById('dayBasedTableContainer');
+        dayBasedTableContainer.innerHTML = '';
+        dayBasedTableContainer.appendChild(dayBasedTable);
+
+        const today = new Date();
+        const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
         const currentMonthCalendar = renderCalendar(currentMonth.getMonth(), currentMonth.getFullYear());
         const nextMonthCalendar = renderCalendar(nextMonth.getMonth(), nextMonth.getFullYear());
         calendarContainer.appendChild(currentMonthCalendar);
+        const breakElem = document.createElement('br');
+        calendarContainer.appendChild(breakElem);
         calendarContainer.appendChild(nextMonthCalendar);
     }
 

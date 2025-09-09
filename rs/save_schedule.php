@@ -13,11 +13,16 @@ $from2 = isset($_POST['available_from2']) ? trim($_POST['available_from2']) : ''
 // Database connection
 require_once '../db_connect.php';
 $conn->query("SET time_zone = '+08:00'");
-if (!isset($_SESSION['sind_id'])) {
+if (isset($_SESSION['adm_id'])) {
+    // Admin: use sind_id from POST
+    $sind_id = $_POST['sind_id'] ?? null;
+} elseif (isset($_SESSION['sind_id'])) {
+    // Sinderella: use their own session id
+    $sind_id = $_SESSION['sind_id'];
+} else {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
-$sind_id = $_SESSION['sind_id'];
 
 $available_from1 = isset($_POST['available_from1']) && $_POST['available_from1'] !== '' ? $_POST['available_from1'] : null;
 $available_from2 = isset($_POST['available_from2']) && $_POST['available_from2'] !== '' ? $_POST['available_from2'] : null;

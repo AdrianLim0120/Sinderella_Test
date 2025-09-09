@@ -184,9 +184,9 @@ if (isset($_POST['save_personal'])) {
     // Use 'others' value if selected
     if ($race === 'others') {
         if (!$race_other) $error_message = "Please specify your race.";
-        $race = $race_other;
+        $race = capitalizeWords($race_other);
     } else {
-        $race = capitalizeWords($race);
+        // $race = capitalizeWords($race_other);
     }
 
     // Validate required fields
@@ -266,9 +266,9 @@ if (isset($_POST['save_family'])) {
     // Use 'others' value if selected
     if ($marital_status === 'others') {
         if (!$marital_status_other) $error_message = "Please specify your marital status.";
-        $marital_status = $marital_status_other;
+        $marital_status = capitalizeWords($marital_status_other);
     } else {
-        $marital_status = capitalizeWords($marital_status);
+        // $marital_status = capitalizeWords($marital_status);
     }
 
     // Validate spouse phone and ic
@@ -414,15 +414,32 @@ if (isset($_POST['save_bank'])) {
     }
 
     function toggleOtherInput(name, value) {
-        document.getElementById(name + '_other').style.display = (value === 'others') ? 'inline' : 'none';
+        // document.getElementById(name + '_other').style.display = (value === 'others') ? 'inline' : 'none';
+        var otherInput = document.getElementById(name + '_other');
+        if (value === 'others') {
+            otherInput.style.display = 'inline';
+        } else {
+            otherInput.style.display = 'none';
+            otherInput.value = '';
+        }
     }
     window.onload = function() {
         showTab('<?php echo $active_tab; ?>');
         var ms = document.querySelector('input[name="marital_status"]:checked');
-        if (ms && ms.value === 'others') document.getElementById('marital_status_other').style.display = 'inline';
-    };
-    window.onload = function() {
-        showTab('<?php echo $active_tab; ?>');
+        // if (ms && ms.value === 'others') document.getElementById('marital_status_other').style.display = 'inline';
+        var msOther = document.getElementById('marital_status_other');
+        var msOtherVal = msOther ? msOther.value.trim().toLowerCase() : '';
+        var standard = ['single','married','divorced','widow','others'];
+        if (
+            (ms && ms.value === 'others') ||
+            (msOther && msOtherVal && !standard.includes(msOtherVal))
+        ) {
+            msOther.style.display = 'inline';
+        } else {
+            msOther.style.display = 'none';
+            msOther.value = '';
+        }
+
         var race = document.querySelector('input[name="race"]:checked');
         if (race && race.value === 'others') document.getElementById('race_other').style.display = 'inline';
         else document.getElementById('race_other').style.display = 'none';
@@ -658,7 +675,7 @@ if (isset($_POST['save_bank'])) {
                 <table>
                     <tr>
                         <td><label for="marital_status">Marital Status</label></td>
-                        <td>
+                        <!-- <td>
                             <div class="radio-group">
                                 <input type="radio" name="marital_status" value="single" onclick="toggleOtherInput('marital_status', this.value)" required <?php if (($sind_marital_status ?? '') === 'Single') echo 'checked'; ?>> Single
                                 <input type="radio" name="marital_status" value="married" onclick="toggleOtherInput('marital_status', this.value)" <?php if (($sind_marital_status ?? '') === 'Married') echo 'checked'; ?>> Married
@@ -669,6 +686,24 @@ if (isset($_POST['save_bank'])) {
                                     <input type="text" id="marital_status_other" name="marital_status_other" class="other-input" style="width:180px; margin-left:8px;" placeholder="Please specify your marital status"
                                         value="<?php echo htmlspecialchars($marital_status_other ?? ((isset($sind_marital_status) && !in_array($sind_marital_status, ['Single','Married','Divorced','Widow','others'])) ? $sind_marital_status : '')); ?>">
                                 </label>
+                            </div>
+                        </td> -->
+                        <td>
+                            <div class="radio-group">
+                                <input type="radio" name="marital_status" value="single" onclick="toggleOtherInput('marital_status', this.value)" required
+                                    <?php if (($sind_marital_status ?? '') === 'single') echo 'checked'; ?>> Single
+                                <input type="radio" name="marital_status" value="married" onclick="toggleOtherInput('marital_status', this.value)"
+                                    <?php if (($sind_marital_status ?? '') === 'married') echo 'checked'; ?>> Married
+                                <input type="radio" name="marital_status" value="divorced" onclick="toggleOtherInput('marital_status', this.value)"
+                                    <?php if (($sind_marital_status ?? '') === 'divorced') echo 'checked'; ?>> Divorced
+                                <input type="radio" name="marital_status" value="widow" onclick="toggleOtherInput('marital_status', this.value)"
+                                    <?php if (($sind_marital_status ?? '') === 'widow') echo 'checked'; ?>> Widow
+                                <input type="radio" name="marital_status" value="others" onclick="toggleOtherInput('marital_status', this.value)"
+                                    <?php if (($sind_marital_status ?? '') === 'others' || (!in_array(($sind_marital_status ?? ''), ['single','married','divorced','widow','others']) && !empty($sind_marital_status))) echo 'checked'; ?>>
+                                    Others: 
+                                    <input type="text" id="marital_status_other" name="marital_status_other" class="other-input" style="width:180px; margin-left:8px;" placeholder="Please specify your marital status"
+                                        value="<?php echo htmlspecialchars($marital_status_other ?? ((isset($sind_marital_status) && !in_array($sind_marital_status, ['single','married','divorced','widow','others'])) ? $sind_marital_status : '')); ?>">
+                                
                             </div>
                         </td>
                     </tr>
@@ -780,10 +815,29 @@ if (isset($_POST['save_bank'])) {
                     <tbody>
                         <?php foreach ($rejected_details as $rej): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($rej['booking_date']); ?></td>
-                            <td><?php echo htmlspecialchars($rej['booking_from']) . ' - ' . htmlspecialchars($rej['booking_to']); ?></td>
+                            <td style="text-align:center;">
+                                <?php
+                                    $dateObj = DateTime::createFromFormat('Y-m-d', $rej['booking_date']);
+                                    echo $dateObj ? $dateObj->format('Y-m-d (l)') : htmlspecialchars($rej['booking_date']);
+                                ?>
+                            </td>
+                            <!-- <td style="text-align:center;"><?php echo htmlspecialchars($rej['booking_from']) . ' - ' . htmlspecialchars($rej['booking_to']); ?></td> -->
+                            <td style="text-align:center;">
+                                <?php
+                                    $fromObj = DateTime::createFromFormat('H:i:s', $rej['booking_from']);
+                                    $toObj = DateTime::createFromFormat('H:i:s', $rej['booking_to']);
+                                    $fromStr = $fromObj ? $fromObj->format('h:i A') : htmlspecialchars($rej['booking_from']);
+                                    $toStr = $toObj ? $toObj->format('h:i A') : htmlspecialchars($rej['booking_to']);
+                                    echo $fromStr . ' - ' . $toStr;
+                                ?>
+                            </td>
                             <td><?php echo htmlspecialchars($rej['reason']); ?></td>
-                            <td><?php echo htmlspecialchars($rej['created_at']); ?></td>
+                            <td style="text-align:center;">
+                                <?php
+                                    $rejAtObj = DateTime::createFromFormat('Y-m-d H:i:s', $rej['created_at']);
+                                    echo $rejAtObj ? $rejAtObj->format('Y-m-d h:i:s A') : htmlspecialchars($rej['created_at']);
+                                ?>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>

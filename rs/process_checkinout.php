@@ -87,7 +87,7 @@ if ($action == 'checkin') {
     $stmt->close();
 
     // Build the link // need to adjust when changing env
-    $rate_link = "http://localhost/Sinderella_FYP/rc/rate_booking.php?token=$token";
+    $rate_link = "http://sinderellauat.free.nf/rc/rate_booking.php?token=$token";
     // $created_at = date('Y-m-d H:i:s');
     // $expired_at = $expires_at;
 

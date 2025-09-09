@@ -117,6 +117,7 @@ $stmt->close();
             <?php include '../includes/header_sind.php'; ?>
             <div class="profile-container">
                 <h2>Manage Schedule</h2>
+                <div id="dayBasedTableContainer"></div><br>
                 <div id="calendarContainer"></div>
                 <div id="scheduleFormContainer" style="display: none;">
                     <h3 id="scheduleFormTitle"></h3>
