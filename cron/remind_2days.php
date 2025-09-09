@@ -40,7 +40,7 @@ if (PHP_SAPI !== 'cli') {
 // ===== Time gate to 08:00–08:10 (unless force=1) =====
 if (!$force) {
     $hhmm = (int) $now->format('Hi'); // e.g., 0804
-    if ($hhmm < 800 || $hhmm > 810) {
+    if ($hhmm < 2320 || $hhmm > 2330) {
         echo json_encode(['ok' => true, 'skipped' => 'outside_8am_window', 'server_time' => $now->format('c')]);
         exit;
     }
