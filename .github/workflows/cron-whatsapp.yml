@@ -2,7 +2,7 @@ name: Daily WhatsApp Reminders
 
 on:
   schedule:
-    - cron: "50 10 * * *"   # 18:30 MYT (UTC+8)
+    - cron: "05 11 * * *"   # 18:30 MYT (UTC+8)
   workflow_dispatch: {}
 
 jobs:
