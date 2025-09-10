@@ -25,6 +25,6 @@ jobs:
 
       - name: Trigger cron (browsered)
         env:
-          CRON_URL: ${{ secrets.CRON_URL }}
+          CRON_URL: "https://sindtest.free.nf/cron/remind_2days.php?internal_key=sinderella-internal-456"
           DRYRUN: "0"         # set "1" for safe testing (no WhatsApp sends)
         run: npm start
