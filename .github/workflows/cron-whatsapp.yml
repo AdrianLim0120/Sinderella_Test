@@ -4,7 +4,7 @@ name: Daily WhatsApp Reminders
 on:
   schedule:
     # 10:00 MYT daily = 02:00 UTC
-    - cron: "25 10 * * *"
+    - cron: "30 10 * * *"
   workflow_dispatch: {}   # allow manual run
 
 jobs:
@@ -26,6 +26,6 @@ jobs:
 
       - name: Trigger cron (browsered)
         env:
-          CRON_URL: "https://sindtest.free.nf/cron/remind_2days.php?internal_key=sinderella-internal-456"
+          CRON_URL: ${{ secrets.CRON_URL }}
           DRYRUN: "0"         # set "1" for safe testing (no WhatsApp sends)
         run: npm start
